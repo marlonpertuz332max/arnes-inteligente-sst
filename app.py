@@ -392,8 +392,67 @@ if menu == "👨‍🏫 Modo Multijugador":
                     sala_encontrada = sala
                     break
             
+          
+                elif submenu == "🎓 Unirse como Estudiante":
+        st.subheader("🎓 Unirse a Sala de Simulación")
+        
+        codigo_sala = st.text_input("Ingresa el código de la sala:", placeholder="SIM-1234").upper()
+        
+        if codigo_sala:
+            sala_encontrada = None
+            for sala in st.session_state.salas.values():
+                if sala['codigo'] == codigo_sala:
+                    sala_encontrada = sala
+                    break
+            
             if sala_encontrada:
-              st.markdown("---")
+                if len(sala_encontrada['estudiantes']) >= sala_encontrada['max_estudiantes']:
+                    st.error("❌ La sala está llena. No se pueden unir más estudiantes.")
+                else:
+                    st.success(f"✅ Sala encontrada: {sala_encontrada['tipo_escenario']}")
+                    
+                    with st.form("registro_estudiante"):
+                        st.subheader("👤 Registro del Estudiante")
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            nombre_estudiante = st.text_input("Nombre completo *", placeholder="Ana García López")
+                            edad = st.number_input("Edad *", min_value=18, max_value=65, value=25)
+                            experiencia = st.selectbox("Experiencia en construcción *",
+                                                     ["Ninguna", "Menos de 1 año", "1-3 años", "3-5 años", "Más de 5 años"])
+                        
+                        with col2:
+                            institucion = st.text_input("Institución/Empresa *", placeholder="Universidad Técnica")
+                            telefono = st.text_input("WhatsApp *", placeholder="+52 55 1234 5678")
+                            email = st.text_input("Email *", placeholder="ana.garcia@email.com")
+                        
+                        st.markdown("---")
+                        st.subheader("🎭 Personalización del Personaje")
+                        
+                        col3, col4, col5 = st.columns(3)
+                        
+                        with col3:
+                            tipo_personaje = st.selectbox("Tipo de personaje *",
+                                                        ["Hombre musculoso", "Mujer atlética", "Persona mayor", 
+                                                         "Persona con sobrepeso", "Mujer embarazada", "Persona con discapacidad motriz"])
+                            
+                            tono_piel = st.selectbox("Tono de piel *",
+                                                   ["Muy claro", "Claro", "Medio", "Oscuro", "Muy oscuro"])
+                        
+                        with col4:
+                            cabello = st.selectbox("Estilo de cabello *",
+                                                 ["Cabello corto", "Cabello largo", "Calvo", "Rasta", "Moño/Recogido"])
+                            
+                            altura = st.number_input("Altura (cm) *", min_value=140, max_value=200, value=170)
+                        
+                        with col5:
+                            complexión = st.selectbox("Complexión física *",
+                                                    ["Delgado", "Atlético", "Mediano", "Robusto", "Obeso"])
+                            
+                            peso = st.number_input("Peso (kg) *", min_value=40, max_value=150, value=70)
+                        
+                        st.markdown("---")
                         st.subheader("🏥 Condiciones de Salud (Opcional)")
                         
                         condiciones_salud = st.multiselect("Condiciones de salud conocidas:",
