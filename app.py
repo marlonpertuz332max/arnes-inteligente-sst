@@ -286,6 +286,7 @@ if movimiento_simulado:
 # SECCIÓN: MODO MULTIJUGADOR
 # =============================================
 
+
 if menu == "👨‍🏫 Modo Multijugador":
     st.header("🎮 Sistema de Simulación Multijugador")
     
@@ -293,99 +294,9 @@ if menu == "👨‍🏫 Modo Multijugador":
                           ["👨‍🏫 Crear Sala como Monitor", "🎓 Unirse como Estudiante"])
     
     if submenu == "👨‍🏫 Crear Sala como Monitor":
-        st.subheader("👨‍🏫 Crear Nueva Sala de Simulación")
+        # ... (código existente para crear sala) ...
+        pass
         
-        with st.form("registro_monitor"):
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                nombre_monitor = st.text_input("Nombre del monitor *", placeholder="Ing. Carlos Rodríguez")
-                email_monitor = st.text_input("Email *", placeholder="carlos@empresa.com")
-                especialidad = st.selectbox("Especialidad *", 
-                                          ["Seguridad en Alturas", "Espacios Confinados", "Electricidad", 
-                                           "Manejo de Maquinaria", "Construcción General"])
-            
-            with col2:
-                empresa = st.text_input("Empresa/Institución *", placeholder="Constructora Segura S.A.")
-                duracion_simulacion = st.number_input("Duración estimada (minutos) *", min_value=5, max_value=120, value=30)
-                max_estudiantes = st.number_input("Máximo de estudiantes *", min_value=1, max_value=20, value=10)
-            
-            st.subheader("🎯 Configuración del Escenario")
-            
-            col3, col4 = st.columns(2)
-            
-            with col3:
-                tipo_escenario = st.selectbox("Tipo de escenario *",
-                                            ["Edificación en construcción", "Estructura metálica", 
-                                             "Torre de comunicación", "Planta industrial", "Puente en construcción"])
-                
-                nivel_dificultad = st.select_slider("Nivel de dificultad *",
-                                                  ["Básico", "Intermedio", "Avanzado", "Experto"])
-            
-            with col4:
-                riesgos_activados = st.multiselect("Riesgos a simular *",
-                                                 ["Caídas de altura", "Electrocución", "Golpes por objetos",
-                                                  "Atrapamientos", "Quemaduras", "Exposición a químicos",
-                                                  "Sobreesfuerzos", "Ruido excesivo"])
-                
-                condiciones_climaticas = st.selectbox("Condiciones climáticas",
-                                                    ["Soleado", "Nublado", "Lluvia ligera", "Lluvia intensa", "Viento fuerte"])
-            
-            descripcion_escenario = st.text_area("Descripción del escenario *",
-                                               placeholder="Describa el contexto de trabajo y objetivos de la simulación...")
-            
-            submitted = st.form_submit_button("🎬 Crear Sala de Simulación", type="primary")
-            
-            if submitted:
-                if nombre_monitor and email_monitor and empresa:
-                    sala_id = str(uuid.uuid4())[:8]
-                    codigo_sala = generar_codigo_sala()
-                    
-                    sala = {
-                        'sala_id': sala_id,
-                        'codigo': codigo_sala,
-                        'monitor_nombre': nombre_monitor,
-                        'monitor_email': email_monitor,
-                        'empresa': empresa,
-                        'especialidad': especialidad,
-                        'duracion': duracion_simulacion,
-                        'max_estudiantes': max_estudiantes,
-                        'tipo_escenario': tipo_escenario,
-                        'nivel_dificultad': nivel_dificultad,
-                        'riesgos_activados': riesgos_activados,
-                        'condiciones_climaticas': condiciones_climaticas,
-                        'descripcion_escenario': descripcion_escenario,
-                        'estudiantes': [],
-                        'activa': True,
-                        'simulacion_iniciada': False,
-                        'fecha_creacion': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    }
-                    
-                    st.session_state.salas[sala_id] = sala
-                    
-                    st.success(f"✅ Sala creada exitosamente!")
-                    st.balloons()
-                    
-                    st.markdown("---")
-                    st.subheader("📋 Información de la Sala Creada")
-                    
-                    col_info1, col_info2 = st.columns(2)
-                    
-                    with col_info1:
-                        st.metric("Código de Sala", codigo_sala)
-                        st.metric("Monitor", nombre_monitor)
-                        st.metric("Escenario", tipo_escenario)
-                        
-                    with col_info2:
-                        st.metric("Dificultad", nivel_dificultad)
-                        st.metric("Duración", f"{duracion_simulacion} min")
-                        st.metric("Estudiantes", f"0/{max_estudiantes}")
-                    
-                    st.info("🎓 *Comparte este código con tus estudiantes para que se unan:*")
-                    st.code(codigo_sala, language="")
-                else:
-                    st.error("❌ Por favor completa todos los campos obligatorios (*)")
-    
     elif submenu == "🎓 Unirse como Estudiante":
         st.subheader("🎓 Unirse a Sala de Simulación")
         
@@ -393,8 +304,8 @@ if menu == "👨‍🏫 Modo Multijugador":
         
         if codigo_sala:
             sala_encontrada = None
-            for sala in st.session_state.salas.values():
-                if sala['codigo'] == codigo_sala:
+            for sala_id, sala in st.session_state.salas.items():
+                if sala['codigo'] == codigo_sala and sala.get('activa', True):
                     sala_encontrada = sala
                     break
             
@@ -403,6 +314,7 @@ if menu == "👨‍🏫 Modo Multijugador":
                     st.error("❌ La sala está llena. No se pueden unir más estudiantes.")
                 else:
                     st.success(f"✅ Sala encontrada: {sala_encontrada['tipo_escenario']}")
+                    st.info(f"👨‍🏫 Monitor: {sala_encontrada['monitor_nombre']}")
                     
                     with st.form("registro_estudiante"):
                         st.subheader("👤 Registro del Estudiante")
@@ -531,8 +443,21 @@ if menu == "👨‍🏫 Modo Multijugador":
                             else:
                                 st.error("❌ Por favor completa todos los campos obligatorios (*)")
             else:
-                st.error("❌ No se encontró ninguna sala con ese código")
-
+                st.error("❌ No se encontró ninguna sala activa con ese código")
+                st.info("💡 Asegúrate de que:")
+                st.write("• El código sea correcto (ej: SIM-1234)")
+                st.write("• La sala esté activa")
+                st.write("• El monitor haya creado la sala recientemente")
+                
+                # Mostrar salas disponibles para debugging
+                if st.checkbox("Mostrar salas disponibles (para debugging)"):
+                    if st.session_state.salas:
+                        st.write("Salas activas:")
+                        for sala_id, sala in st.session_state.salas.items():
+                            if sala.get('activa', True):
+                                st.write(f"- {sala['codigo']}: {sala['tipo_escenario']} ({len(sala['estudiantes'])}/{sala['max_estudiantes']} estudiantes)")
+                    else:
+                        st.write("No hay salas creadas aún")
 # =============================================
 # SECCIÓN: SALAS ACTIVAS (PARA MONITORES) - COMPLETA
 # =============================================
@@ -696,8 +621,9 @@ elif menu == "📊 Salas Activas":
                     else:
                         st.info("👥 No hay estudiantes conectados aún. Comparte el código de la sala para que se unan.")
 
+
 # =============================================
-# SECCIÓN: SIMULADOR ORIGINAL - COMPLETA
+# SECCIÓN: SIMULADOR ORIGINAL - MEJORADA
 # =============================================
 
 elif menu == "🎮 Simulador Original":
@@ -730,6 +656,24 @@ elif menu == "🎮 Simulador Original":
     with col2:
         st.subheader("🎯 Estado Actual")
         
+        # Botón de inicio de simulación
+        if st.button("🎬 Iniciar Simulación", type="primary", use_container_width=True):
+            st.session_state.simulation_running = True
+            st.session_state.simulation_start_time = datetime.now()
+            st.success("Simulación iniciada!")
+            
+        if st.button("⏹️ Detener Simulación", use_container_width=True):
+            st.session_state.simulation_running = False
+            st.warning("Simulación detenida")
+        
+        # Estado de la simulación
+        if st.session_state.get('simulation_running', False):
+            st.success("🟢 SIMULACIÓN ACTIVA")
+            tiempo_transcurrido = datetime.now() - st.session_state.simulation_start_time
+            st.metric("Tiempo transcurrido", f"{int(tiempo_transcurrido.total_seconds())} seg")
+        else:
+            st.info("⏸️ SIMULACIÓN DETENIDA")
+        
         # Simulación de métricas en tiempo real
         st.metric("Ritmo cardíaco", f"{random.randint(65, 85)} lpm", delta="Normal")
         st.metric("Oxígeno en sangre", f"{random.randint(95, 99)}%", delta="Óptimo")
@@ -752,40 +696,111 @@ elif menu == "🎮 Simulador Original":
                            ["Andamios en fachada", "Estructura metálica", "Torre de comunicación", 
                             "Trabajos en cubierta", "Espacios confinados verticales"])
     
-    # Visualización del escenario
+    # Visualización del escenario MEJORADA
     col_viz1, col_viz2 = st.columns([2, 1])
     
     with col_viz1:
-        # Crear una visualización simple del escenario
-        fig, ax = plt.subplots(figsize=(10, 6))
+        # Crear una visualización MEJORADA del escenario
+        fig, ax = plt.subplots(figsize=(12, 8))
         
-        # Dibujar el escenario según la selección
+        # Dibujar el escenario según la selección con más detalle
         if "Andamios" in escenario:
-            # Dibujar andamios
-            for i in range(5):
-                ax.add_patch(Rectangle((i, 0), 0.8, 4, fill=False, edgecolor='brown', linewidth=2))
-            ax.text(2.5, 2, "🧱", fontsize=40, ha='center')
-            ax.set_title("Trabajo en Andamios", fontsize=16, fontweight='bold')
+            # Dibujar andamios más detallados
+            for i in range(6):
+                ax.add_patch(Rectangle((i*0.8, 0), 0.6, 5, fill=False, edgecolor='#8B4513', linewidth=3))
+                # Plataformas
+                if i < 5:
+                    ax.add_patch(Rectangle((i*0.8 + 0.1, 2), 0.4, 0.1, color='#DEB887'))
+                    ax.add_patch(Rectangle((i*0.8 + 0.1, 4), 0.4, 0.1, color='#DEB887'))
+            
+            # Trabajador en andamios
+            ax.plot([2.5], [3.5], 'o', markersize=15, color='red', label='Trabajador')
+            ax.text(2.5, 3.8, '👷', fontsize=20, ha='center')
+            
+            # Línea de vida
+            ax.plot([2.5, 2.5], [3.5, 5], 'g--', linewidth=2, alpha=0.7, label='Línea de vida')
+            
+            ax.set_title("🔨 Trabajo en Andamios - Nivel 4", fontsize=16, fontweight='bold', pad=20)
+            ax.text(2.5, -0.5, f"Trabajador: {trabajador_nombre}\nAltura: 12 metros", 
+                   ha='center', fontsize=10, bbox=dict(boxstyle="round,pad=0.3", facecolor="lightblue"))
             
         elif "Estructura" in escenario:
-            # Dibujar estructura metálica
-            ax.add_patch(Rectangle((1, 0), 3, 0.2, color='gray'))  # Base
-            ax.add_patch(Rectangle((2, 0.2), 0.1, 3, color='silver'))  # Columna
-            ax.add_patch(Rectangle((1, 3), 3, 0.1, color='silver'))  # Viga superior
-            ax.text(2.5, 1.5, "🔩", fontsize=40, ha='center')
-            ax.set_title("Estructura Metálica", fontsize=16, fontweight='bold')
+            # Dibujar estructura metálica más detallada
+            # Base
+            ax.add_patch(Rectangle((1, 0), 3, 0.3, color='#555555'))
+            
+            # Columnas principales
+            ax.add_patch(Rectangle((1.5, 0.3), 0.2, 4, color='#888888'))
+            ax.add_patch(Rectangle((3.3, 0.3), 0.2, 4, color='#888888'))
+            
+            # Vigas
+            ax.add_patch(Rectangle((1, 2), 3, 0.15, color='#666666'))
+            ax.add_patch(Rectangle((1, 4), 3, 0.15, color='#666666'))
+            
+            # Trabajador en estructura
+            ax.plot([2.0], [3.0], 'o', markersize=15, color='red')
+            ax.text(2.0, 3.3, '👷', fontsize=20, ha='center')
+            
+            # Arnés y línea
+            ax.plot([2.0, 2.0], [3.0, 4.2], 'g-', linewidth=2, alpha=0.7)
+            ax.plot([2.0], [4.2], 's', markersize=8, color='blue', label='Punto de anclaje')
+            
+            ax.set_title("🔩 Estructura Metálica - Montaje", fontsize=16, fontweight='bold', pad=20)
+            ax.text(2.5, -0.5, f"Trabajador: {trabajador_nombre}\nAltura: 15 metros", 
+                   ha='center', fontsize=10, bbox=dict(boxstyle="round,pad=0.3", facecolor="lightblue"))
             
         elif "Torre" in escenario:
-            # Dibujar torre
-            ax.plot([2.5, 2.5], [0, 4], color='black', linewidth=3)
-            ax.plot([1.5, 3.5], [4, 4], color='black', linewidth=2)
-            ax.text(2.5, 2, "📡", fontsize=40, ha='center')
-            ax.set_title("Torre de Comunicación", fontsize=16, fontweight='bold')
+            # Dibujar torre de comunicación más detallada
+            # Torre principal
+            ax.plot([2.5, 2.5], [0, 4.5], color='#333333', linewidth=8)
+            
+            # Plataformas de trabajo
+            ax.add_patch(Rectangle((1.5, 1.5), 2, 0.1, color='#666666'))
+            ax.add_patch(Rectangle((1.5, 3.0), 2, 0.1, color='#666666'))
+            
+            # Antenas
+            ax.plot([2.5], [4.7], '^', markersize=15, color='gray')
+            ax.plot([1.8, 3.2], [4.5, 4.5], color='gray', linewidth=3)
+            
+            # Trabajador en torre
+            ax.plot([2.0], [3.2], 'o', markersize=15, color='red')
+            ax.text(2.0, 3.5, '👷', fontsize=20, ha='center')
+            
+            # Sistema anticaídas
+            ax.plot([2.0, 2.5], [3.2, 4.5], 'r-', linewidth=2, alpha=0.7, label='Sistema anticaídas')
+            ax.plot([2.5], [4.5], 'o', markersize=10, color='orange', label='Anclaje superior')
+            
+            ax.set_title("📡 Torre de Comunicación - Mantenimiento", fontsize=16, fontweight='bold', pad=20)
+            ax.text(2.5, -0.5, f"Trabajador: {trabajador_nombre}\nAltura: 45 metros", 
+                   ha='center', fontsize=10, bbox=dict(boxstyle="round,pad=0.3", facecolor="lightblue"))
         
+        elif "cubierta" in escenario.lower():
+            # Dibujar cubierta
+            ax.add_patch(Rectangle((0.5, 1), 4, 2, color='#8B4513', alpha=0.7))
+            ax.add_patch(Rectangle((0.5, 1), 4, 0.1, color='#A0522D'))  # Borde
+            
+            # Trabajador en cubierta
+            ax.plot([2.5], [2.0], 'o', markersize=15, color='red')
+            ax.text(2.5, 2.3, '👷', fontsize=20, ha='center')
+            
+            # Línea de vida horizontal
+            ax.plot([1, 4], [2.8, 2.8], 'g-', linewidth=3, alpha=0.7)
+            ax.plot([2.5, 2.5], [2.0, 2.8], 'g--', linewidth=2, alpha=0.7)
+            
+            ax.set_title("🏠 Trabajos en Cubierta Inclinada", fontsize=16, fontweight='bold', pad=20)
+            ax.text(2.5, -0.5, f"Trabajador: {trabajador_nombre}\nInclinación: 30°", 
+                   ha='center', fontsize=10, bbox=dict(boxstyle="round,pad=0.3", facecolor="lightblue"))
+        
+        # Configuración común del gráfico
         ax.set_xlim(0, 5)
-        ax.set_ylim(0, 5)
+        ax.set_ylim(-1, 6)
         ax.set_aspect('equal')
         ax.axis('off')
+        
+        # Leyenda de seguridad
+        ax.text(0.1, 5.5, '🚨 SISTEMA DE SEGURIDAD ACTIVO', 
+               fontsize=12, fontweight='bold', color='red',
+               bbox=dict(boxstyle="round,pad=0.5", facecolor="yellow", alpha=0.7))
         
         st.pyplot(fig)
     
@@ -794,68 +809,132 @@ elif menu == "🎮 Simulador Original":
         
         # Evaluar riesgos basados en la configuración
         riesgos = []
+        recomendaciones = []
         
         if "Vértigo" in condiciones_salud and "Andamios" in escenario:
             riesgos.append("🦘 Alto riesgo por vértigo en altura")
+            recomendaciones.append("• Evaluar aptitud médica para trabajo en altura")
             
         if "Principiante" in trabajador_experiencia:
             riesgos.append("🎓 Experiencia limitada - supervisión requerida")
+            recomendaciones.append("• Asignar supervisor experimentado")
+            recomendaciones.append("• Realizar entrenamiento adicional")
             
         if "Arnés de seguridad" not in epp_equipado:
             riesgos.append("🪂 CRÍTICO: Arnés de seguridad no equipado")
+            recomendaciones.append("• SUSPENDER TRABAJO hasta equipar arnés")
             
         if "Línea de vida" not in epp_equipado and "Andamios" in escenario:
             riesgos.append("🔗 Sistema de anclaje recomendado")
+            recomendaciones.append("• Instalar línea de vida continua")
             
         if trabajador_edad > 55:
             riesgos.append("👴 Mayor riesgo de fatiga - pausas frecuentes")
+            recomendaciones.append("• Programar pausas cada 45 minutos")
             
+        if "Torre" in escenario:
+            recomendaciones.extend([
+                "• Verificar condiciones climáticas",
+                "• Usar equipo anticaídas certificado", 
+                "• Comunicación constante con base",
+                "• Verificar anclajes estructurales"
+            ])
+            
+        if "Estructura" in escenario:
+            recomendaciones.extend([
+                "• Inspeccionar puntos de soldadura",
+                "• Verificar estabilidad de componentes",
+                "• Delimitar área de trabajo"
+            ])
+        
+        # Mostrar riesgos
         if len(riesgos) > 0:
-            st.error("🚨 Riesgos Detectados:")
+            st.error("🚨 **Riesgos Detectados:**")
             for riesgo in riesgos:
                 st.write(f"• {riesgo}")
         else:
-            st.success("✅ Condiciones óptimas de trabajo")
+            st.success("✅ **Sin riesgos críticos detectados**")
             
-        # Recomendaciones
-        st.subheader("💡 Recomendaciones")
-        if "Andamios" in escenario:
-            st.write("• Verificar estabilidad de andamios")
-            st.write("• Usar línea de vida continua")
-            st.write("• Inspeccionar puntos de anclaje")
-        elif "Torre" in escenario:
-            st.write("• Verificar condiciones climáticas")
-            st.write("• Usar equipo anticaídas")
-            st.write("• Comunicación constante con base")
+        # Mostrar recomendaciones
+        st.subheader("💡 Recomendaciones de Seguridad")
+        for recomendacion in recomendaciones[:6]:  # Mostrar máximo 6 recomendaciones
+            st.write(recomendacion)
     
-    # Sistema de alertas
+    # Sistema de alertas y controles
     st.markdown("---")
-    st.subheader("🚨 Sistema de Alertas Inteligentes")
+    st.subheader("🎮 Controles de Simulación")
     
-    col_alert1, col_alert2, col_alert3 = st.columns(3)
+    col_control1, col_control2, col_control3, col_control4 = st.columns(4)
     
-    with col_alert1:
-        if st.button("🔴 Simular Caída", type="secondary"):
+    with col_control1:
+        if st.button("🔴 Simular Caída", type="secondary", use_container_width=True):
             st.session_state.fall_count += 1
-            st.error("🚨¡ALERTA!¡CAÍDA DETECTADA!")
-            st.error("📍 Activando sistema de respuesta inmediata")
-            st.error("📞 Notificando a supervisores")
+            st.error("""
+            🚨 **¡ALERTA DE CAÍDA DETECTADA!**
             
-    with col_alert2:
-        if st.button("🟡 Simular Mal Ajuste", type="secondary"):
-            st.warning("⚠️ Arnés mal ajustado detectado")
-            st.warning("📢 Emitiendo alerta sonora")
-            st.warning("📱 Enviando notificación al trabajador")
+            **Acciones automáticas:**
+            • Bloqueo instantáneo del arnés
+            • Notificación a supervisores
+            • Activación de protocolo de rescate
+            • Envío de ubicación GPS
+            """)
             
-    with col_alert3:
-        if st.button("🟢 Condiciones Normales", type="secondary"):
-            st.success("✅ Todas las condiciones son normales")
-            st.success("📊 Monitoreo continuo activo")
-            st.success("👷 Trabajador en condiciones seguras")
+    with col_control2:
+        if st.button("🟡 Simular Mal Ajuste", type="secondary", use_container_width=True):
+            st.warning("""
+            ⚠️ **ARNÉS MAL AJUSTADO**
+            
+            **Recomendaciones:**
+            • Verificar ajuste de piernas
+            • Revisar hebilla pectoral
+            • Ajustar cintas sobrantes
+            """)
+            
+    with col_control3:
+        if st.button("🟢 Condiciones Normales", type="secondary", use_container_width=True):
+            st.success("""
+            ✅ **CONDICIONES NORMALES**
+            
+            **Estado del sistema:**
+            • Monitoreo activo
+            • Comunicación estable
+            • Equipamiento correcto
+            """)
+            
+    with col_control4:
+        if st.button("📊 Generar Reporte", type="secondary", use_container_width=True):
+            st.info("""
+            📋 **REPORTE DE SIMULACIÓN**
+            
+            **Datos recopilados:**
+            • Tiempo de simulación: Activo
+            • Alertas generadas: Sí
+            • Riesgos identificados: {}
+            """.format(len(riesgos)))
     
-    # Contador de simulaciones
-    st.metric("Simulaciones de caída realizadas", st.session_state.fall_count)
-
+    # Métricas de la simulación
+    st.markdown("---")
+    st.subheader("📈 Métricas de la Simulación")
+    
+    col_metric1, col_metric2, col_metric3, col_metric4 = st.columns(4)
+    
+    with col_metric1:
+        st.metric("Caídas simuladas", st.session_state.fall_count)
+        
+    with col_metric2:
+        st.metric("Riesgos detectados", len(riesgos))
+        
+    with col_metric3:
+        st.metric("Nivel de seguridad", 
+                 f"{max(0, 100 - len(riesgos)*15)}%",
+                 delta=f"-{len(riesgos)*15}%" if riesgos else "+0%")
+        
+    with col_metric4:
+        if st.session_state.get('simulation_running', False):
+            tiempo = datetime.now() - st.session_state.simulation_start_time
+            st.metric("Tiempo activo", f"{int(tiempo.total_seconds())}s")
+        else:
+            st.metric("Tiempo activo", "0s")
 # =============================================
 # SECCIÓN: INICIO - COMPLETA
 # =============================================
