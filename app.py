@@ -2,10 +2,248 @@ import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+import random
+import pandas as pd
+import uuid
+from datetime import datetime
 from matplotlib.patches import Circle, Rectangle, Arc
 
 # Configuración de la página
 st.set_page_config(page_title="Arnés Inteligente SST", page_icon="🦺", layout="wide")
+
+# =============================================
+# SISTEMA DE SIMULACIÓN MULTIJUGADOR - INICIALIZACIÓN
+# =============================================
+
+# Inicializar session state para el sistema multijugador
+if 'monitores' not in st.session_state:
+    st.session_state.monitores = {}
+if 'salas' not in st.session_state:
+    st.session_state.salas = {}
+if 'estudiantes' not in st.session_state:
+    st.session_state.estudiantes = {}
+if 'ultima_actualizacion_movimiento' not in st.session_state:
+    st.session_state.ultima_actualizacion_movimiento = datetime.now()
+if 'movimiento_automatico' not in st.session_state:
+    st.session_state.movimiento_automatico = True
+if "fall_count" not in st.session_state:
+    st.session_state.fall_count = 0
+if "simulation_running" not in st.session_state:
+    st.session_state.simulation_running = False
+
+# =============================================
+# FUNCIONES DEL SISTEMA MULTIJUGADOR
+# =============================================
+
+def generar_codigo_sala():
+    return f"SIM-{random.randint(1000, 9999)}"
+
+def obtener_icono_personaje(tipo_personaje):
+    iconos = {
+        "Hombre musculoso": "💪",
+        "Mujer atlética": "🏃‍♀", 
+        "Persona mayor": "👴",
+        "Persona con sobrepeso": "🧍",
+        "Mujer embarazada": "🤰",
+        "Persona con discapacidad motriz": "♿"
+    }
+    return iconos.get(tipo_personaje, "👤")
+
+def enviar_whatsapp_simulacion(numero, mensaje):
+    return True, f"Mensaje simulado enviado a {numero}"
+
+# 🚨 SISTEMA DE DETECCIÓN AUTOMÁTICA DE RIESGOS
+def evaluar_riesgos_automaticos(estudiante, ubicacion):
+    riesgos_detectados = []
+    
+    condiciones_salud = estudiante.get('condiciones_salud', [])
+    
+    if "Vértigo" in condiciones_salud and "Andamios" in ubicacion:
+        riesgos_detectados.append("🦘 Riesgo de vértigo en altura")
+    
+    if "Mareos" in condiciones_salud and "Estructura" in ubicacion:
+        riesgos_detectados.append("🌀 Posible mareo en estructura elevada")
+    
+    if "Problemas cardíacos" in condiciones_salud:
+        riesgos_detectados.append("❤ Monitoreo cardíaco requerido")
+    
+    if "Diabetes" in condiciones_salud:
+        riesgos_detectados.append("🩸 Riesgo hipoglucémico - monitoreo continuo")
+    
+    tipo_personaje = estudiante.get('tipo_personaje', '')
+    
+    if tipo_personaje == "Persona mayor":
+        riesgos_detectados.append("👴 Mayor riesgo de fatiga y caídas")
+    
+    if tipo_personaje == "Mujer embarazada":
+        riesgos_detectados.append("🤰 Riesgo elevado - evitar esfuerzos intensos")
+        if "Excavación" in ubicacion:
+            riesgos_detectados.append("⚠ Exposición a vibraciones peligrosa")
+    
+    if tipo_personaje == "Persona con discapacidad motriz":
+        riesgos_detectados.append("♿ Movilidad reducida - rutas de evacuación críticas")
+    
+    if tipo_personaje == "Persona con sobrepeso":
+        riesgos_detectados.append("⚖ Mayor carga articular - límite de peso reducido")
+    
+    peso = estudiante.get('peso', 70)
+    altura = estudiante.get('altura', 170)
+    
+    if altura > 0:
+        imc = peso / ((altura/100) ** 2)
+        if imc > 30:
+            riesgos_detectados.append("📊 IMC elevado - mayor riesgo metabólico")
+        if imc < 18.5:
+            riesgos_detectados.append("📊 Bajo peso - riesgo de fatiga")
+    
+    herramientas = estudiante.get('herramientas', [])
+    
+    if "Soldadora" in herramientas and "Andamios" in ubicacion:
+        riesgos_detectados.append("🔥 Riesgo de incendio por soldadura en altura")
+    
+    if "Taladro" in herramientas and "Estructura" in ubicacion:
+        riesgos_detectados.append("⚡ Riesgo eléctrico aumentado")
+    
+    if "Sierra eléctrica" in herramientas:
+        riesgos_detectados.append("🔪 Corte severo - EPP completo requerido")
+    
+    epp_requerido = ["Casco", "Botas con punta de acero"]
+    epp_faltante = [ep for ep in epp_requerido if ep not in estudiante.get('epp', [])]
+    
+    if epp_faltante:
+        riesgos_detectados.append(f"🦺 EPP faltante: {', '.join(epp_faltante)}")
+    
+    if "Andamios" in ubicacion and "Arnés de seguridad" not in estudiante.get('epp', []):
+        riesgos_detectados.append("🪂 ALTURA CRÍTICA - Arnés de seguridad requerido")
+    
+    if "Excavación" in ubicacion:
+        riesgos_detectados.append("⛰ Riesgo de derrumbe o atrapamiento")
+    
+    if "Estructura" in ubicacion:
+        riesgos_detectados.append("🏗 Caída de objetos - área delimitada")
+    
+    if len(herramientas) > 3:
+        riesgos_detectados.append("🎒 Sobrecarga de herramientas - riesgo ergonómico")
+    
+    return riesgos_detectados
+
+def evaluar_riesgo_caida(estudiante, ubicacion):
+    factores_riesgo = 0
+    
+    if "Vértigo" in estudiante.get('condiciones_salud', []):
+        factores_riesgo += 2
+    
+    if "Mareos" in estudiante.get('condiciones_salud', []):
+        factores_riesgo += 2
+    
+    if estudiante.get('tipo_personaje') == "Persona mayor":
+        factores_riesgo += 2
+    
+    if estudiante.get('tipo_personaje') == "Mujer embarazada":
+        factores_riesgo += 3
+    
+    if "Andamios" in ubicacion:
+        factores_riesgo += 3
+    
+    if "Estructura" in ubicacion:
+        factores_riesgo += 2
+    
+    if "Arnés de seguridad" not in estudiante.get('epp', []):
+        factores_riesgo += 4
+    
+    if factores_riesgo >= 8:
+        return "🔴 ALTO RIESGO de caída"
+    elif factores_riesgo >= 5:
+        return "🟡 MEDIO RIESGO de caída"
+    elif factores_riesgo >= 3:
+        return "🟢 BAJO RIESGO de caída"
+    else:
+        return None
+
+def evaluar_riesgo_sobrecarga(estudiante):
+    peso = estudiante.get('peso', 70)
+    herramientas = estudiante.get('herramientas', [])
+    
+    puntaje = 0
+    
+    if peso > 100:
+        puntaje += 3
+    elif peso > 85:
+        puntaje += 2
+    elif peso > 70:
+        puntaje += 1
+    
+    if len(herramientas) > 4:
+        puntaje += 3
+    elif len(herramientas) > 2:
+        puntaje += 2
+    
+    herramientas_pesadas = ["Soldadora", "Compactadora", "Hidrolavadora"]
+    for herramienta in herramientas:
+        if herramienta in herramientas_pesadas:
+            puntaje += 2
+    
+    if puntaje >= 5:
+        return "⚖ ALERTA: Posible sobrecarga física"
+    elif puntaje >= 3:
+        return "⚖ ADVERTENCIA: Carga física elevada"
+    else:
+        return None
+
+def simular_movimiento_continuo():
+    if not st.session_state.get('movimiento_automatico', False):
+        return False
+    
+    ahora = datetime.now()
+    ultima_actualizacion = st.session_state.ultima_actualizacion_movimiento
+    
+    if (ahora - ultima_actualizacion).total_seconds() >= 20:
+        zonas = ["Zona A - Andamios", "Zona B - Excavación", "Zona C - Estructura", "Zona D - Acabados"]
+        movimiento_ocurrido = False
+        
+        for sala_id, sala in st.session_state.salas.items():
+            if sala.get('simulacion_iniciada', False):
+                for est_id in sala['estudiantes']:
+                    estudiante = st.session_state.estudiantes[est_id]
+                    
+                    if random.random() < 0.35:
+                        zonas_posibles = [z for z in zonas if z != estudiante['ubicacion_actual']]
+                        if zonas_posibles:
+                            nueva_zona = random.choice(zonas_posibles)
+                            
+                            movimiento_anterior = estudiante['ubicacion_actual']
+                            estudiante['ubicacion_actual'] = nueva_zona
+                            estudiante['ultimo_movimiento'] = ahora.strftime("%H:%M:%S")
+                            estudiante['historial_movimientos'] = estudiante.get('historial_movimientos', [])
+                            estudiante['historial_movimientos'].append({
+                                'desde': movimiento_anterior,
+                                'hacia': nueva_zona,
+                                'hora': ahora.strftime("%H:%M:%S")
+                            })
+                            
+                            riesgos_automaticos = evaluar_riesgos_automaticos(estudiante, nueva_zona)
+                            for riesgo in riesgos_automaticos:
+                                if riesgo not in estudiante['riesgos_detectados']:
+                                    estudiante['riesgos_detectados'].append(riesgo)
+                            
+                            riesgo_caida = evaluar_riesgo_caida(estudiante, nueva_zona)
+                            if riesgo_caida and riesgo_caida not in estudiante['riesgos_detectados']:
+                                estudiante['riesgos_detectados'].append(riesgo_caida)
+                            
+                            riesgo_sobrecarga = evaluar_riesgo_sobrecarga(estudiante)
+                            if riesgo_sobrecarga and riesgo_sobrecarga not in estudiante['riesgos_detectados']:
+                                estudiante['riesgos_detectados'].append(riesgo_sobrecarga)
+                            
+                            movimiento_ocurrido = True
+        
+        st.session_state.ultima_actualizacion_movimiento = ahora
+        return movimiento_ocurrido
+    
+    return False
+
+# =============================================
+# INTERFAZ PRINCIPAL MEJORADA
+# =============================================
 
 # Título principal con diseño especial
 st.markdown("""
@@ -26,366 +264,179 @@ st.markdown("""
 
 st.markdown("---")
 
-# El resto del código se mantiene igual...
-# COLUMNA IZQUIERDA: Información educativa para SST
-with st.sidebar:
-    st.header("📚 Fundamentos del Proyecto")
-    
-    st.subheader("🎯 Objetivo del Sistema")
-    st.info("""
-    Proteger a trabajadores en altura mediante:
-    - **Detección temprana** de situaciones de riesgo
-    - **Alertas inmediatas** para prevención
-    - **Monitoreo en tiempo real** de parámetros críticos
-    """)
-    
-    st.subheader("⚡ Parámetros Monitoreados")
-    
-    with st.expander("📊 ACELERACIÓN (Movimiento)"):
-        st.write("""
-        **Valores de referencia:**
-        - 🟢 **9.8 m/s²**: Gravedad normal (estático)
-        - 🟡 **5-9 m/s²**: Movimientos bruscos
-        - 🔴 **< 5 m/s²**: ¡POSIBLE CAÍDA LIBRE!
-        - 🔴 **> 13 m/s²**: Fuerzas peligrosas
-        """)
-    
-    with st.expander("📐 ÁNGULO (Postura)"):
-        st.write("""
-        **Límites de seguridad:**
-        - 🟢 **0°-30°**: Postura segura
-        - 🟡 **30°-60°**: Precaución requerida
-        - 🔴 **> 60°**: ¡PELIGRO DE VUELCO!
-        """)
+# =============================================
+# MENÚ PRINCIPAL MEJORADO
+# =============================================
 
-# FUNCIÓN PARA DIBUJAR AL TRABAJADOR (se mantiene igual)
-def dibujar_trabajador(angulo, estado, ax):
-    # Limpiar el axes
-    ax.clear()
-    
-    # Configurar el área de dibujo
-    ax.set_xlim(-2, 2)
-    ax.set_ylim(-1, 3)
-    ax.set_aspect('equal')
-    
-    # Color según el estado
-    if estado == "seguro":
-        color_cuerpo = 'green'
-        color_arnes = 'darkgreen'
-    elif estado == "precaucion":
-        color_cuerpo = 'orange'
-        color_arnes = 'darkorange'
-    else:  # peligro
-        color_cuerpo = 'red'
-        color_arnes = 'darkred'
-    
-    # Convertir ángulo a radianes para la rotación
-    angulo_rad = np.radians(angulo)
-    
-    # Dibujar cuerpo (rectángulo rotado)
-    cuerpo = Rectangle((-0.3, -0.5), 0.6, 1.5, color=color_cuerpo, alpha=0.7)
-    
-    # Aplicar rotación al cuerpo
-    transform = plt.matplotlib.transforms.Affine2D().rotate_around(0, 0, angulo_rad) + ax.transData
-    cuerpo.set_transform(transform)
-    ax.add_patch(cuerpo)
-    
-    # Dibujar cabeza (círculo)
-    cabeza = Circle((0, 1.2), 0.2, color=color_cuerpo, alpha=0.7)
-    cabeza.set_transform(transform)
-    ax.add_patch(cabeza)
-    
-    # Dibujar arnés (en forma de H)
-    # Tirantes verticales
-    tirante_izq = Rectangle((-0.25, 0.2), 0.1, 0.8, color=color_arnes, alpha=0.9)
-    tirante_der = Rectangle((0.15, 0.2), 0.1, 0.8, color=color_arnes, alpha=0.9)
-    # Tirante horizontal
-    tirante_horizontal = Rectangle((-0.25, 0.8), 0.5, 0.1, color=color_arnes, alpha=0.9)
-    
-    for tirante in [tirante_izq, tirante_der, tirante_horizontal]:
-        tirante.set_transform(transform)
-        ax.add_patch(tirante)
-    
-    # Dibujar línea de seguridad (cuerda)
-    if estado == "peligro":
-        # Línea rota en caso de peligro
-        ax.plot([0, 0.5], [2.5, 2.0], 'r--', linewidth=3, alpha=0.7)
-        ax.plot([0.5, 1.0], [2.0, 1.5], 'r--', linewidth=3, alpha=0.7)
-    else:
-        # Línea sólida en caso seguro
-        ax.plot([0, 0], [2.5, 1.5], 'gray', linewidth=3, alpha=0.7)
-    
-    # Añadir texto del estado
-    ax.text(0, -0.8, f'Ángulo: {angulo}°', ha='center', fontsize=12, fontweight='bold',
-            color=color_cuerpo, bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
-    
-    # Quitar ejes
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.spines['bottom'].set_visible(False)
-    ax.spines['left'].set_visible(False)
-    
-    # Título del gráfico
-    ax.set_title('👷 SIMULACIÓN DEL TRABAJADOR', fontsize=14, fontweight='bold', pad=20)
+menu = st.sidebar.selectbox(
+    "*Navegación Principal:*",
+    ["🏠 Inicio", "🎮 Simulador Original", "👨‍🏫 Modo Multijugador", "📊 Salas Activas"]
+)
 
-# CONTROLES PRINCIPALES
-st.header("🎮 Simulador de Situaciones de Riesgo")
+# Ejecutar movimiento automático
+movimiento_simulado = simular_movimiento_continuo()
+if movimiento_simulado:
+    st.rerun()
 
-col1, col2, col3 = st.columns([2, 1, 1])
+# =============================================
+# SECCIÓN: MODO MULTIJUGADOR
+# =============================================
 
-with col1:
-    modo = st.selectbox(
-        "**Selecciona el escenario a simular:**",
-        [
-            "TRABAJO NORMAL - Situación segura",
-            "CAÍDA LIBRE - Emergencia máxima", 
-            "POSTURA PELIGROSA - Riesgo de vuelco",
-            "SOBRECARGA - Fuerzas excesivas"
-        ],
-        help="Elige diferentes situaciones que pueden ocurrir en trabajos en altura"
-    )
-
-with col2:
-    duracion = st.slider("**Duración (segundos):**", 5, 30, 15)
-
-with col3:
-    st.write("**Control de simulación:**")
-    start_col, stop_col = st.columns(2)
-    with start_col:
-        start = st.button("▶️ INICIAR", type="primary", use_container_width=True)
-    with stop_col:
-        stop = st.button("⏹️ DETENER", use_container_width=True)
-
-# PANEL DE ESTADO PRINCIPAL
-st.header("📊 Panel de Monitoreo en Tiempo Real")
-
-# Crear columnas para los datos
-col_status, col_visual, col_metrics = st.columns([2, 2, 1])
-
-with col_status:
-    status_display = st.empty()
-    situation_explanation = st.empty()
-
-with col_visual:
-    st.subheader("👷 Simulación Visual")
-    worker_placeholder = st.empty()
-
-with col_metrics:
-    st.subheader("📈 Métricas")
-    accel_display = st.empty()
-    angle_display = st.empty()
-    incidents_display = st.metric(
-        "🚨 Incidentes Detectados", 
-        st.session_state.get('fall_count', 0)
-    )
-
-# Área de gráficos
-st.subheader("📈 Gráficos de Monitoreo Técnico")
-graph_placeholder = st.empty()
-progress_bar = st.empty()
-
-# Inicializar variables
-if "fall_count" not in st.session_state:
-    st.session_state.fall_count = 0
-if "simulation_running" not in st.session_state:
-    st.session_state.simulation_running = False
-
-# Lógica de simulación
-if stop:
-    st.session_state.simulation_running = False
-
-if start and not st.session_state.simulation_running:
-    st.session_state.simulation_running = True
+if menu == "👨‍🏫 Modo Multijugador":
+    st.header("🎮 Sistema de Simulación Multijugador")
     
-    fs = 10  # Muestras por segundo
-    t_vals, accel_vals, angle_vals = [], [], []
+    submenu = st.selectbox("Selecciona el modo:", 
+                          ["👨‍🏫 Crear Sala como Monitor", "🎓 Unirse como Estudiante"])
     
-    progress_bar = st.progress(0)
-    
-    for i in range(duracion * fs):
-        if not st.session_state.simulation_running:
-            break
-            
-        t = i / fs
-        progress = (i + 1) / (duracion * fs)
-        progress_bar.progress(progress)
+    if submenu == "👨‍🏫 Crear Sala como Monitor":
+        st.subheader("👨‍🏫 Crear Nueva Sala de Simulación")
         
-        # --- GENERAR DATOS SEGÚN ESCENARIO ---
-        if "TRABAJO NORMAL" in modo:
-            accel = 9.8 + 0.2 * np.random.randn()
-            angle = 10 + np.sin(0.5 * t) * 5
-            status = "🟢 SITUACIÓN NORMAL"
-            status_color = "success"
-            explanation = "El trabajador realiza sus labores de forma segura"
-            estado_visual = "seguro"
+        with st.form("registro_monitor"):
+            col1, col2 = st.columns(2)
             
-        elif "CAÍDA LIBRE" in modo:
-            if t < duracion / 2:
-                accel = 9.8 + 0.2 * np.random.randn()
-                angle = 15 + 5 * np.random.randn()
-                status = "🟢 SITUACIÓN NORMAL"
-                status_color = "success"
-                explanation = "Trabajador realizando labores normales"
-                estado_visual = "seguro"
-            else:
-                accel = 2 + 0.3 * np.random.randn()
-                angle = 70 + 10 * np.random.randn()
-                status = "🔴 ¡CAÍDA DETECTADA!"
-                status_color = "error"
-                explanation = "¡EMERGENCIA! Aceleración por debajo de 5 m/s² indica caída libre"
-                estado_visual = "peligro"
+            with col1:
+                nombre_monitor = st.text_input("Nombre del monitor *", placeholder="Ing. Carlos Rodríguez")
+                email_monitor = st.text_input("Email *", placeholder="carlos@empresa.com")
+                especialidad = st.selectbox("Especialidad *", 
+                                          ["Seguridad en Alturas", "Espacios Confinados", "Electricidad", 
+                                           "Manejo de Maquinaria", "Construcción General"])
+            
+            with col2:
+                empresa = st.text_input("Empresa/Institución *", placeholder="Constructora Segura S.A.")
+                duracion_simulacion = st.number_input("Duración estimada (minutos) *", min_value=5, max_value=120, value=30)
+                max_estudiantes = st.number_input("Máximo de estudiantes *", min_value=1, max_value=20, value=10)
+            
+            st.subheader("🎯 Configuración del Escenario")
+            
+            col3, col4 = st.columns(2)
+            
+            with col3:
+                tipo_escenario = st.selectbox("Tipo de escenario *",
+                                            ["Edificación en construcción", "Estructura metálica", 
+                                             "Torre de comunicación", "Planta industrial", "Puente en construcción"])
                 
-        elif "POSTURA PELIGROSA" in modo:
-            accel = 9.8 + 0.2 * np.random.randn()
-            if t < duracion / 2:
-                angle = 15 + 5 * np.random.randn()
-                status = "🟢 SITUACIÓN NORMAL"
-                status_color = "success"
-                explanation = "Postura dentro de límites seguros"
-                estado_visual = "seguro"
-            else:
-                angle = 75 + 5 * np.random.randn()
-                status = "🟡 POSTURA PELIGROSA"
-                status_color = "warning"
-                explanation = "¡Ángulo superior a 60°! Riesgo de vuelco"
-                estado_visual = "peligro"
+                nivel_dificultad = st.select_slider("Nivel de dificultad *",
+                                                  ["Básico", "Intermedio", "Avanzado", "Experto"])
+            
+            with col4:
+                riesgos_activados = st.multiselect("Riesgos a simular *",
+                                                 ["Caídas de altura", "Electrocución", "Golpes por objetos",
+                                                  "Atrapamientos", "Quemaduras", "Exposición a químicos",
+                                                  "Sobreesfuerzos", "Ruido excesivo"])
                 
-        else:  # SOBRECARGA
-            if t < duracion / 2:
-                accel = 9.8 + 0.2 * np.random.randn()
-                status = "🟢 SITUACIÓN NORMAL"
-                status_color = "success"
-                explanation = "Fuerzas dentro de parámetros normales"
-                estado_visual = "seguro"
-            else:
-                accel = 14 + 0.5 * np.random.randn()
-                status = "🟡 SOBRECARGA DETECTADA"
-                status_color = "warning"
-                explanation = "¡Fuerzas excesivas! Puede dañar el arnés"
-                estado_visual = "precaucion"
-            angle = 20 + np.sin(0.5 * t) * 5
-        
-        # --- DETECCIÓN DE INCIDENTES ---
-        incidente = (accel < 5) or (angle > 60) or (accel > 13)
-        
-        if incidente:
-            st.session_state.fall_count += 1
+                condiciones_climaticas = st.selectbox("Condiciones climáticas",
+                                                    ["Soleado", "Nublado", "Lluvia ligera", "Lluvia intensa", "Viento fuerte"])
             
-            # Mostrar protocolo de emergencia
-            st.error(f"""
-            🚨 **PROTOCOLO DE EMERGENCIA ACTIVADO**
+            descripcion_escenario = st.text_area("Descripción del escenario *",
+                                               placeholder="Describa el contexto de trabajo y objetivos de la simulación...")
             
-            **Situación:** {modo.split(' - ')[0]}
-            **Tiempo del incidente:** {t:.1f} segundos
-            **Acciones automáticas:**
-            • 🔊 Alarma sonora activada
-            • 📱 Alertas enviadas a supervisores  
-            • 📍 GPS compartido con rescate
-            • 🏥 Servicios médicos notificados
-            """)
+            submitted = st.form_submit_button("🎬 Crear Sala de Simulación", type="primary")
             
-            # Efectos visuales para emergencia
-            st.balloons()
-            
-        else:
-            st.success("""
-            ✅ **SISTEMA EN ESTADO NORMAL**
-            
-            **Monitoreo activo:**
-            • 📊 Parámetros dentro de límites
-            • 👷 Trabajador en situación segura
-            • 🔄 Monitoreo continuo
-            """)
-        
-        # Actualizar displays
-        if status_color == "success":
-            status_display.success(f"**{status}**")
-        elif status_color == "warning":
-            status_display.warning(f"**{status}**")
-        else:
-            status_display.error(f"**{status}**")
-            
-        situation_explanation.info(f"**Explicación:** {explanation}")
-        
-        accel_display.metric("Aceleración", f"{accel:.1f} m/s²")
-        angle_display.metric("Ángulo", f"{angle:.1f}°")
-        
-        # --- DIBUJAR TRABAJADOR ---
-        fig_worker, ax_worker = plt.subplots(figsize=(4, 6))
-        dibujar_trabajador(int(angle), estado_visual, ax_worker)
-        worker_placeholder.pyplot(fig_worker)
-        plt.close(fig_worker)
-        
-        # Guardar datos para gráfico técnico
-        t_vals.append(t)
-        accel_vals.append(accel)
-        angle_vals.append(angle)
-        
-        # --- CREAR GRÁFICOS TÉCNICOS ---
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6))
-        
-        # Gráfico de aceleración
-        ax1.plot(t_vals, accel_vals, 'b-', linewidth=2, label='ACELERACIÓN')
-        ax1.axhline(y=9.8, color='green', linestyle='-', alpha=0.6, label='GRAVEDAD NORMAL')
-        ax1.axhline(y=5, color='red', linestyle='--', alpha=0.7, label='LÍMITE CAÍDA')
-        ax1.axhline(y=13, color='orange', linestyle='--', alpha=0.7, label='LÍMITE SOBRECARGA')
-        ax1.set_ylabel('Aceleración (m/s²)')
-        ax1.legend()
-        ax1.grid(True, alpha=0.3)
-        
-        # Gráfico de ángulo
-        ax2.plot(t_vals, angle_vals, 'g-', linewidth=2, label='ÁNGULO')
-        ax2.axhline(y=60, color='red', linestyle='--', alpha=0.7, label='LÍMITE PELIGROSO')
-        ax2.set_ylabel('Ángulo (°)')
-        ax2.set_xlabel('Tiempo (segundos)')
-        ax2.legend()
-        ax2.grid(True, alpha=0.3)
-        
-        plt.tight_layout()
-        graph_placeholder.pyplot(fig)
-        plt.close(fig)
-        
-        time.sleep(1/fs)
+            if submitted:
+                if nombre_monitor and email_monitor and empresa:
+                    sala_id = str(uuid.uuid4())[:8]
+                    codigo_sala = generar_codigo_sala()
+                    
+                    sala = {
+                        'sala_id': sala_id,
+                        'codigo': codigo_sala,
+                        'monitor_nombre': nombre_monitor,
+                        'monitor_email': email_monitor,
+                        'empresa': empresa,
+                        'especialidad': especialidad,
+                        'duracion': duracion_simulacion,
+                        'max_estudiantes': max_estudiantes,
+                        'tipo_escenario': tipo_escenario,
+                        'nivel_dificultad': nivel_dificultad,
+                        'riesgos_activados': riesgos_activados,
+                        'condiciones_climaticas': condiciones_climaticas,
+                        'descripcion_escenario': descripcion_escenario,
+                        'estudiantes': [],
+                        'activa': True,
+                        'simulacion_iniciada': False,
+                        'fecha_creacion': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                    
+                    st.session_state.salas[sala_id] = sala
+                    
+                    st.success(f"✅ Sala creada exitosamente!")
+                    st.balloons()
+                    
+                    st.markdown("---")
+                    st.subheader("📋 Información de la Sala Creada")
+                    
+                    col_info1, col_info2 = st.columns(2)
+                    
+                    with col_info1:
+                        st.metric("Código de Sala", codigo_sala)
+                        st.metric("Monitor", nombre_monitor)
+                        st.metric("Escenario", tipo_escenario)
+                        
+                    with col_info2:
+                        st.metric("Dificultad", nivel_dificultad)
+                        st.metric("Duración", f"{duracion_simulacion} min")
+                        st.metric("Estudiantes", f"0/{max_estudiantes}")
+                    
+                    st.info("🎓 *Comparte este código con tus estudiantes para que se unan:*")
+                    st.code(codigo_sala, language="")
     
-    # Finalizar simulación
-    progress_bar.empty()
-    st.session_state.simulation_running = False
-    st.success("🎉 **Simulación completada exitosamente**")
-
-# INFORMACIÓN EDUCATIVA
-st.markdown("---")
-st.header("🎓 Material de Apoyo para la Exposición")
-
-col_exp1, col_exp2 = st.columns(2)
-
-with col_exp1:
-    st.subheader("💡 Puntos Clave para la Exposición")
-    st.info("""
-    **Visualización del sistema:**
-    - 👷 **Verde**: Situación normal y segura
-    - 🟠 **Naranja**: Precaución - parámetros cercanos a límites
-    - 🔴 **Rojo**: Peligro - activación de protocolos de emergencia
-    
-    **La simulación muestra:**
-    - Postura real del trabajador
-    - Estado del arnés de seguridad
-    - Línea de vida y anclajes
-    """)
-
-# CONCLUSIÓN
-st.success("""
-**🎯 Mensaje Final:**
-*"Combinamos tecnología moderna con principios de SST para crear protección visual e intuitiva que todos pueden entender."*
-""")
-
-# Créditos finales
-st.markdown("---")
-st.markdown("""
-<div style='text-align: center; padding: 20px; background: #f8f9fa; border-radius: 10px;'>
-    <h3 style='color: #6c757d;'>Desarrollado para el Proyecto de Grado de</h3>
-    <h2 style='color: #495057; font-weight: bold;'>Ing. Michell Andrea Rodriguez Rivera</h2>
-    <p style='color: #6c757d;'>Ingeniera en Seguridad y Salud en el Trabajo</p>
-</div>
-""", unsafe_allow_html=True)
+    elif submenu == "🎓 Unirse como Estudiante":
+        st.subheader("🎓 Unirse a Sala de Simulación")
+        
+        codigo_sala = st.text_input("Ingresa el código de la sala:", placeholder="SIM-1234").upper()
+        
+        if codigo_sala:
+            sala_encontrada = None
+            for sala in st.session_state.salas.values():
+                if sala['codigo'] == codigo_sala:
+                    sala_encontrada = sala
+                    break
+            
+            if sala_encontrada:
+                if len(sala_encontrada['estudiantes']) >= sala_encontrada['max_estudiantes']:
+                    st.error("❌ La sala está llena. No se pueden unir más estudiantes.")
+                else:
+                    st.success(f"✅ Sala encontrada: {sala_encontrada['tipo_escenario']}")
+                    
+                    with st.form("registro_estudiante"):
+                        st.subheader("👤 Registro del Estudiante")
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            nombre_estudiante = st.text_input("Nombre completo *", placeholder="Ana García López")
+                            edad = st.number_input("Edad *", min_value=18, max_value=65, value=25)
+                            experiencia = st.selectbox("Experiencia en construcción *",
+                                                     ["Ninguna", "Menos de 1 año", "1-3 años", "3-5 años", "Más de 5 años"])
+                        
+                        with col2:
+                            institucion = st.text_input("Institución/Empresa *", placeholder="Universidad Técnica")
+                            telefono = st.text_input("WhatsApp *", placeholder="+52 55 1234 5678")
+                            email = st.text_input("Email *", placeholder="ana.garcia@email.com")
+                        
+                        st.markdown("---")
+                        st.subheader("🎭 Personalización del Personaje")
+                        
+                        col3, col4, col5 = st.columns(3)
+                        
+                        with col3:
+                            tipo_personaje = st.selectbox("Tipo de personaje *",
+                                                        ["Hombre musculoso", "Mujer atlética", "Persona mayor", 
+                                                         "Persona con sobrepeso", "Mujer embarazada", "Persona con discapacidad motriz"])
+                            
+                            tono_piel = st.selectbox("Tono de piel *",
+                                                   ["Muy claro", "Claro", "Medio", "Oscuro", "Muy oscuro"])
+                        
+                        with col4:
+                            cabello = st.selectbox("Estilo de cabello *",
+                                                 ["Cabello corto", "Cabello largo", "Calvo", "Rasta", "Moño/Recogido"])
+                            
+                            altura = st.number_input("Altura (cm) *", min_value=140, max_value=200, value=170)
+                        
+                        with col5:
+                            complexión = st.selectbox("Complexión física *",
+                                                    ["Delgado", "Atlético", "Mediano", "Robusto", "Obeso"])
+                            
+                            peso = st.number_input("Peso (kg) *", min_value=40, max_value=150, value=70)
+                        
+                        st.markdown("---")
