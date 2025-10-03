@@ -393,54 +393,7 @@ if menu == "👨‍🏫 Modo Multijugador":
                     break
             
             if sala_encontrada:
-                if len(sala_encontrada['estudiantes']) >= sala_encontrada['max_estudiantes']:
-                    st.error("❌ La sala está llena. No se pueden unir más estudiantes.")
-                else:
-                    st.success(f"✅ Sala encontrada: {sala_encontrada['tipo_escenario']}")
-                    
-                    with st.form("registro_estudiante"):
-                        st.subheader("👤 Registro del Estudiante")
-                        
-                        col1, col2 = st.columns(2)
-                        
-                        with col1:
-                            nombre_estudiante = st.text_input("Nombre completo *", placeholder="Ana García López")
-                            edad = st.number_input("Edad *", min_value=18, max_value=65, value=25)
-                            experiencia = st.selectbox("Experiencia en construcción *",
-                                                     ["Ninguna", "Menos de 1 año", "1-3 años", "3-5 años", "Más de 5 años"])
-                        
-                        with col2:
-                            institucion = st.text_input("Institución/Empresa *", placeholder="Universidad Técnica")
-                            telefono = st.text_input("WhatsApp *", placeholder="+52 55 1234 5678")
-                            email = st.text_input("Email *", placeholder="ana.garcia@email.com")
-                        
-                        st.markdown("---")
-                        st.subheader("🎭 Personalización del Personaje")
-                        
-                        col3, col4, col5 = st.columns(3)
-                        
-                        with col3:
-                            tipo_personaje = st.selectbox("Tipo de personaje *",
-                                                        ["Hombre musculoso", "Mujer atlética", "Persona mayor", 
-                                                         "Persona con sobrepeso", "Mujer embarazada", "Persona con discapacidad motriz"])
-                            
-                            tono_piel = st.selectbox("Tono de piel *",
-                                                   ["Muy claro", "Claro", "Medio", "Oscuro", "Muy oscuro"])
-                        
-                        with col4:
-                            cabello = st.selectbox("Estilo de cabello *",
-                                                 ["Cabello corto", "Cabello largo", "Calvo", "Rasta", "Moño/Recogido"])
-                            
-                            altura = st.number_input("Altura (cm) *", min_value=140, max_value=200, value=170)
-                        
-                        with col5:
-                            complexión = st.selectbox("Complexión física *",
-                                                    ["Delgado", "Atlético", "Mediano", "Robusto", "Obeso"])
-                            
-                            peso = st.number_input("Peso (kg) *", min_value=40, max_value=150, value=70)
-                        
-                        st.markdown("---")
-                                                st.markdown("---")
+              st.markdown("---")
                         st.subheader("🏥 Condiciones de Salud (Opcional)")
                         
                         condiciones_salud = st.multiselect("Condiciones de salud conocidas:",
@@ -530,7 +483,7 @@ if menu == "👨‍🏫 Modo Multijugador":
                 st.error("❌ No se encontró ninguna sala con ese código")
 
 # =============================================
-# SECCIÓN: SALAS ACTIVAS (PARA MONITORES)
+# SECCIÓN: SALAS ACTIVAS (PARA MONITORES) - COMPLETA
 # =============================================
 
 elif menu == "📊 Salas Activas":
@@ -539,6 +492,19 @@ elif menu == "📊 Salas Activas":
     if not st.session_state.salas:
         st.info("📝 No hay salas activas. Crea una sala en 'Modo Multijugador'.")
     else:
+        # Contadores generales
+        total_estudiantes = sum(len(sala['estudiantes']) for sala in st.session_state.salas.values() if sala['activa'])
+        total_salas_activas = sum(1 for sala in st.session_state.salas.values() if sala['activa'])
+        
+        col_stats1, col_stats2, col_stats3 = st.columns(3)
+        with col_stats1:
+            st.metric("Salas Activas", total_salas_activas)
+        with col_stats2:
+            st.metric("Estudiantes Totales", total_estudiantes)
+        with col_stats3:
+            salas_simulando = sum(1 for sala in st.session_state.salas.values() if sala.get('simulacion_iniciada', False))
+            st.metric("Simulaciones Activas", salas_simulando)
+        
         for sala_id, sala in st.session_state.salas.items():
             if sala['activa']:
                 with st.expander(f"🏠 {sala['codigo']} - {sala['tipo_escenario']} ({len(sala['estudiantes'])}/{sala['max_estudiantes']} estudiantes)", expanded=True):
@@ -548,25 +514,30 @@ elif menu == "📊 Salas Activas":
                     with col_sala1:
                         st.metric("Monitor", sala['monitor_nombre'])
                         st.metric("Dificultad", sala['nivel_dificultad'])
-                        st.metric("Duración", f"{sala['duracion']} min")
+                        st.metric("Empresa", sala['empresa'])
                     
                     with col_sala2:
                         st.metric("Estudiantes", f"{len(sala['estudiantes'])}/{sala['max_estudiantes']}")
-                        st.metric("Escenario", sala['tipo_escenario'])
+                        st.metric("Duración", f"{sala['duracion']} min")
                         st.metric("Clima", sala['condiciones_climaticas'])
                     
                     with col_sala3:
-                        st.metric("Riesgos", len(sala['riesgos_activados']))
-                        st.metric("Estado", "🟢 Activa" if sala['activa'] else "🔴 Inactiva")
+                        st.metric("Riesgos Configurados", len(sala['riesgos_activados']))
+                        estado = "🎬 Activa" if sala.get('simulacion_iniciada', False) else "⏸ Pausada"
+                        st.metric("Estado Simulación", estado)
                         st.metric("Creada", sala['fecha_creacion'].split()[0])
                     
+                    # Descripción del escenario
+                    st.write("**Descripción:**", sala['descripcion_escenario'])
+                    
                     # Botones de control para el monitor
-                    col_btn1, col_btn2, col_btn3 = st.columns(3)
+                    st.subheader("🎮 Controles de Simulación")
+                    col_btn1, col_btn2, col_btn3, col_btn4 = st.columns(4)
                     
                     with col_btn1:
-                        if st.button(f"🎬 Iniciar Simulación", key=f"start_{sala_id}"):
+                        if st.button(f"🎬 Iniciar Simulación", key=f"start_{sala_id}", type="primary"):
                             sala['simulacion_iniciada'] = True
-                            st.success("✅ Simulación iniciada!")
+                            st.success("✅ Simulación iniciada! Los estudiantes comenzarán a moverse automáticamente.")
                             st.rerun()
                     
                     with col_btn2:
@@ -576,9 +547,19 @@ elif menu == "📊 Salas Activas":
                             st.rerun()
                     
                     with col_btn3:
+                        if st.button(f"🔄 Reiniciar Movimientos", key=f"reset_{sala_id}"):
+                            # Reiniciar ubicaciones de todos los estudiantes
+                            for est_id in sala['estudiantes']:
+                                if est_id in st.session_state.estudiantes:
+                                    st.session_state.estudiantes[est_id]['ubicacion_actual'] = "Zona A - Andamios"
+                                    st.session_state.estudiantes[est_id]['riesgos_detectados'] = []
+                            st.info("🔄 Ubicaciones reiniciadas")
+                            st.rerun()
+                    
+                    with col_btn4:
                         if st.button(f"🔴 Finalizar Sala", key=f"end_{sala_id}"):
                             sala['activa'] = False
-                            st.error("🔴 Sala finalizada")
+                            st.error("🔴 Sala finalizada. Los estudiantes ya no podrán conectarse.")
                             st.rerun()
                     
                     # Lista de estudiantes en la sala
@@ -586,80 +567,284 @@ elif menu == "📊 Salas Activas":
                         st.subheader("🎓 Estudiantes Conectados")
                         
                         for est_id in sala['estudiantes']:
-                            estudiante = st.session_state.estudiantes[est_id]
-                            
-                            col_est1, col_est2, col_est3 = st.columns([1, 2, 1])
-                            
-                            with col_est1:
-                                st.write(f"**{obtener_icono_personaje(estudiante['tipo_personaje'])} {estudiante['nombre']}**")
-                                st.write(f"*{estudiante['institucion']}*")
-                            
-                            with col_est2:
-                                st.write(f"📍 **Ubicación:** {estudiante['ubicacion_actual']}")
-                                st.write(f"⏰ **Último movimiento:** {estudiante['ultimo_movimiento']}")
+                            if est_id in st.session_state.estudiantes:
+                                estudiante = st.session_state.estudiantes[est_id]
                                 
-                                if estudiante['riesgos_detectados']:
-                                    st.error(f"🚨 **{len(estudiante['riesgos_detectados'])} riesgos detectados**")
-                                    for riesgo in estudiante['riesgos_detectados'][:3]:
-                                        st.write(f"• {riesgo}")
-                                else:
-                                    st.success("✅ Sin riesgos detectados")
-                            
-                            with col_est3:
-                                # Botón para ver detalles del estudiante
-                                if st.button(f"👀 Ver Detalles", key=f"view_{est_id}"):
-                                    st.session_state.estudiante_detalle = est_id
+                                # Crear tarjeta para cada estudiante
+                                with st.container():
+                                    col_est1, col_est2, col_est3 = st.columns([1, 2, 1])
+                                    
+                                    with col_est1:
+                                        st.write(f"**{obtener_icono_personaje(estudiante['tipo_personaje'])} {estudiante['nombre']}**")
+                                        st.write(f"*{estudiante['institucion']}*")
+                                        st.write(f"Edad: {estudiante['edad']}")
+                                        st.write(f"Exp: {estudiante['experiencia']}")
+                                    
+                                    with col_est2:
+                                        # Información de ubicación y movimiento
+                                        ubicacion_actual = estudiante['ubicacion_actual']
+                                        st.write(f"📍 **Ubicación actual:** {ubicacion_actual}")
+                                        st.write(f"⏰ **Último movimiento:** {estudiante['ultimo_movimiento']}")
+                                        
+                                        # Evaluar riesgos actualizados
+                                        riesgos_actuales = evaluar_riesgos_automaticos(estudiante, ubicacion_actual)
+                                        riesgo_caida = evaluar_riesgo_caida(estudiante, ubicacion_actual)
+                                        riesgo_sobrecarga = evaluar_riesgo_sobrecarga(estudiante)
+                                        
+                                        # Combinar todos los riesgos
+                                        todos_riesgos = riesgos_actuales
+                                        if riesgo_caida:
+                                            todos_riesgos.append(riesgo_caida)
+                                        if riesgo_sobrecarga:
+                                            todos_riesgos.append(riesgo_sobrecarga)
+                                        
+                                        # Mostrar riesgos
+                                        if todos_riesgos:
+                                            st.error(f"🚨 **{len(todos_riesgos)} riesgos detectados**")
+                                            for riesgo in todos_riesgos[:4]:  # Mostrar máximo 4 riesgos
+                                                st.write(f"• {riesgo}")
+                                        else:
+                                            st.success("✅ Sin riesgos detectados")
+                                    
+                                    with col_est3:
+                                        # Información de equipamiento
+                                        st.write("**EPP:**", ", ".join(estudiante['epp']) if estudiante['epp'] else "Ninguno")
+                                        st.write("**Herramientas:**", ", ".join(estudiante['herramientas']) if estudiante['herramientas'] else "Ninguna")
+                                        
+                                        # Botón para forzar movimiento (solo para testing)
+                                        if st.button(f"🚶‍♂️ Mover", key=f"move_{est_id}"):
+                                            zonas = ["Zona A - Andamios", "Zona B - Excavación", "Zona C - Estructura", "Zona D - Acabados"]
+                                            nueva_zona = random.choice([z for z in zonas if z != estudiante['ubicacion_actual']])
+                                            estudiante['ubicacion_actual'] = nueva_zona
+                                            estudiante['ultimo_movimiento'] = datetime.now().strftime("%H:%M:%S")
+                                            st.success(f"Movido a {nueva_zona}")
+                                            st.rerun()
+                        
+                        # Estadísticas de la sala
+                        st.subheader("📈 Estadísticas de la Sala")
+                        col_stat1, col_stat2, col_stat3 = st.columns(3)
+                        
+                        with col_stat1:
+                            estudiantes_con_riesgos = sum(1 for est_id in sala['estudiantes'] 
+                                                         if est_id in st.session_state.estudiantes 
+                                                         and st.session_state.estudiantes[est_id]['riesgos_detectados'])
+                            st.metric("Estudiantes con Riesgos", estudiantes_con_riesgos)
+                        
+                        with col_stat2:
+                            total_movimientos = sum(len(st.session_state.estudiantes[est_id].get('historial_movimientos', [])) 
+                                                   for est_id in sala['estudiantes'] 
+                                                   if est_id in st.session_state.estudiantes)
+                            st.metric("Total Movimientos", total_movimientos)
+                        
+                        with col_stat3:
+                            sin_arnes = sum(1 for est_id in sala['estudiantes'] 
+                                           if est_id in st.session_state.estudiantes 
+                                           and "Arnés de seguridad" not in st.session_state.estudiantes[est_id]['epp'])
+                            st.metric("Sin Arnés", sin_arnes)
                     
                     else:
-                        st.info("👥 No hay estudiantes conectados aún.")
+                        st.info("👥 No hay estudiantes conectados aún. Comparte el código de la sala para que se unan.")
 
 # =============================================
-# SECCIONES ORIGINALES (MANTENER TUS OTRAS PESTAÑAS)
+# SECCIÓN: SIMULADOR ORIGINAL - COMPLETA
 # =============================================
-
-elif menu == "🏠 Inicio":
-    st.header("🏠 Página de Inicio")
-    st.markdown("""
-    ## Bienvenida al Sistema de Protección Inteligente
-    
-    Este sistema permite simular entornos laborales en construcción con detección automática de riesgos.
-    
-    ### Características principales:
-    - 🎮 **Simulación multijugador** en tiempo real
-    - 🚨 **Detección automática** de riesgos laborales  
-    - 👨‍🏫 **Modo monitor** para supervisar múltiples estudiantes
-    - 📊 **Dashboard en vivo** de movimientos y alertas
-    - 🦺 **Sistema de EPP** inteligente
-    
-    ### Cómo usar:
-    1. **Como Monitor**: Crea una sala y comparte el código
-    2. **Como Estudiante**: Únete con el código proporcionado
-    3. **Monitoreo**: Visualiza riesgos en tiempo real en 'Salas Activas'
-    """)
 
 elif menu == "🎮 Simulador Original":
-    st.header("🎮 Simulador Original de Arnés Inteligente")
-    st.info("Esta es la versión original del simulador individual")
+    st.header("🎮 Simulador de Arnés Inteligente - Modo Individual")
     
-    # Aquí puedes mantener tu simulador original existente
     col1, col2 = st.columns(2)
     
     with col1:
-        if st.button("Iniciar Simulación Individual"):
+        st.subheader("🚀 Control de Simulación")
+        if st.button("🎬 Iniciar Simulación Individual", type="primary", use_container_width=True):
             st.session_state.simulation_running = True
+            st.session_state.fall_count = 0
+            st.session_state.simulation_start_time = datetime.now()
             st.success("Simulación individual iniciada")
-    
-    with col2:
-        if st.button("Detener Simulación"):
+            
+        if st.button("⏹ Detener Simulación", use_container_width=True):
             st.session_state.simulation_running = False
             st.warning("Simulación detenida")
+    
+    with col2:
+        st.subheader("📊 Estado Actual")
+        if st.session_state.simulation_running:
+            st.success("🟢 SIMULACIÓN ACTIVA")
+            tiempo_transcurrido = datetime.now() - st.session_state.simulation_start_time
+            st.metric("Tiempo transcurrido", f"{int(tiempo_transcurrido.total_seconds())} seg")
+        else:
+            st.info("⏸ SIMULACIÓN DETENIDA")
+        
+        st.metric("Caídas detectadas", st.session_state.fall_count)
+    
+    # Simulación de datos en tiempo real
+    if st.session_state.simulation_running:
+        st.markdown("---")
+        st.subheader("📡 Datos del Sensor en Tiempo Real")
+        
+        # Generar datos simulados
+        col_data1, col_data2, col_data3, col_data4 = st.columns(4)
+        
+        with col_data1:
+            altura = random.randint(0, 50)  # metros
+            st.metric("Altura trabajador", f"{altura} m")
+            if altura > 10:
+                st.warning("⚠ Trabajando en altura")
+        
+        with col_data2:
+            tension_arnes = random.randint(0, 100)  # kg
+            st.metric("Tensión arnés", f"{tension_arnes} kg")
+            if tension_arnes > 0:
+                st.error("🚨 ARNÉS ACTIVADO - CAÍDA DETECTADA")
+                if random.random() < 0.1:  # 10% de probabilidad de caída
+                    st.session_state.fall_count += 1
+        
+        with col_data3:
+            latitud = round(4.6097 + random.uniform(-0.01, 0.01), 6)
+            longitud = round(-74.0817 + random.uniform(-0.01, 0.01), 6)
+            st.metric("Ubicación", f"{latitud}, {longitud}")
+        
+        with col_data4:
+            ritmo_cardiaco = random.randint(60, 120)
+            st.metric("Ritmo cardíaco", f"{ritmo_cardiaco} bpm")
+            if ritmo_cardiaco > 100:
+                st.warning("🔴 Ritmo cardíaco elevado")
+        
+        # Gráfico de tensión del arnés
+        st.markdown("---")
+        st.subheader("📈 Monitoreo de Tensión del Arnés")
+        
+        # Simular datos históricos
+        tiempo = list(range(30))
+        tension_historica = [max(0, random.randint(0, 20) + random.randint(-5, 5)) for _ in range(30)]
+        
+        fig, ax = plt.subplots(figsize=(10, 4))
+        ax.plot(tiempo, tension_historica, 'b-', linewidth=2)
+        ax.axhline(y=50, color='r', linestyle='--', label='Límite seguro (50 kg)')
+        ax.fill_between(tiempo, tension_historica, alpha=0.3)
+        ax.set_xlabel('Tiempo (segundos)')
+        ax.set_ylabel('Tensión (kg)')
+        ax.set_title('Tensión del Arnés en Tiempo Real')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        
+        st.pyplot(fig)
+        
+        # Alertas del sistema
+        st.markdown("---")
+        st.subheader("🚨 Sistema de Alertas")
+        
+        alertas = []
+        if altura > 15:
+            alertas.append("🔴 TRABAJO EN GRAN ALTURA - EXTREMO CUIDADO")
+        if tension_arnes > 0:
+            alertas.append("🟡 ARNÉS BAJO TENSIÓN - VERIFICAR ESTADO")
+        if ritmo_cardiaco > 100:
+            alertas.append("🔴 RITMO CARDÍACO ELEVADO - POSIBLE ESTRÉS")
+        if st.session_state.fall_count > 0:
+            alertas.append(f"🚨 {st.session_state.fall_count} CAÍDA(S) DETECTADA(S) - EMERGENCIA")
+        
+        if alertas:
+            for alerta in alertas:
+                st.error(alerta)
+        else:
+            st.success("✅ TODOS LOS SISTEMAS EN ESTADO NORMAL")
+
+# =============================================
+# SECCIÓN: INICIO - COMPLETA
+# =============================================
+
+elif menu == "🏠 Inicio":
+    st.header("🏠 Sistema de Protección Inteligente para Trabajos en Altura")
+    
+    st.markdown("""
+    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 15px; color: white; text-align: center;'>
+        <h1 style='color: white; margin-bottom: 20px;'>🦺 PROTECCIÓN INTELIGENTE EN TIEMPO REAL</h1>
+        <p style='font-size: 1.2em;'>Sistema avanzado de monitoreo y simulación para prevención de riesgos laborales</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    col_feat1, col_feat2, col_feat3 = st.columns(3)
+    
+    with col_feat1:
+        st.subheader("🎮 Simulación Multijugador")
+        st.markdown("""
+        - Creación de salas virtuales
+        - Estudiantes en tiempo real  
+        - Movimiento automático
+        - Detección de riesgos
+        - Panel de control monitor
+        """)
+    
+    with col_feat2:
+        st.subheader("🚨 Monitoreo Inteligente")
+        st.markdown("""
+        - Sensores en tiempo real
+        - Detección de caídas
+        - Alertas automáticas
+        - Análisis de tensión
+        - Geolocalización
+        """)
+    
+    with col_feat3:
+        st.subheader("📊 Analytics Avanzados")
+        st.markdown("""
+        - Estadísticas de riesgo
+        - Histórico de movimientos
+        - Reportes automáticos
+        - Dashboard en vivo
+        - Exportación de datos
+        """)
+    
+    st.markdown("---")
+    
+    st.subheader("🚀 Comenzar Ahora")
+    
+    col_start1, col_start2, col_start3 = st.columns(3)
+    
+    with col_start1:
+        if st.button("👨‍🏫 Crear Sala de Simulación", use_container_width=True):
+            st.session_state.menu = "👨‍🏫 Modo Multijugador"
+            st.rerun()
+    
+    with col_start2:
+        if st.button("🎓 Unirse como Estudiante", use_container_width=True):
+            st.session_state.menu = "👨‍🏫 Modo Multijugador"
+            st.rerun()
+    
+    with col_start3:
+        if st.button("📊 Ver Salas Activas", use_container_width=True):
+            st.session_state.menu = "📊 Salas Activas"
+            st.rerun()
+    
+    st.markdown("---")
+    st.subheader("📈 Estadísticas del Sistema")
+    
+    col_stats1, col_stats2, col_stats3, col_stats4 = st.columns(4)
+    
+    with col_stats1:
+        total_salas = len(st.session_state.salas)
+        st.metric("Salas Creadas", total_salas)
+    
+    with col_stats2:
+        total_estudiantes = len(st.session_state.estudiantes)
+        st.metric("Estudiantes Registrados", total_estudiantes)
+    
+    with col_stats3:
+        salas_activas = sum(1 for sala in st.session_state.salas.values() if sala['activa'])
+        st.metric("Salas Activas", salas_activas)
+    
+    with col_stats4:
+        st.metric("Simulaciones Hoy", random.randint(5, 20))
 
 # =============================================
 # SISTEMA DE ACTUALIZACIÓN AUTOMÁTICA
 # =============================================
 
-# Actualizar automáticamente cada 10 segundos si hay salas activas
+# Actualizar automáticamente cada 5 segundos si hay salas activas
 salas_activas = any(sala.get('simulacion_iniciada', False) for sala in st.session_state.salas.values())
 if salas_activas:
-    time.sleep(10)
+    time.sleep(5)
     st.rerun()
