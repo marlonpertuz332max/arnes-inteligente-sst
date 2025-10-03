@@ -393,7 +393,7 @@ if menu == "👨‍🏫 Modo Multijugador":
                     break
             
           
-                elif submenu == "🎓 Unirse como Estudiante":
+                    elif submenu == "🎓 Unirse como Estudiante":
         st.subheader("🎓 Unirse a Sala de Simulación")
         
         codigo_sala = st.text_input("Ingresa el código de la sala:", placeholder="SIM-1234").upper()
@@ -540,7 +540,6 @@ if menu == "👨‍🏫 Modo Multijugador":
             
             else:
                 st.error("❌ No se encontró ninguna sala con ese código")
-
 # =============================================
 # SECCIÓN: SALAS ACTIVAS (PARA MONITORES) - COMPLETA
 # =============================================
